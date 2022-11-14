@@ -35,76 +35,86 @@ LOOK_AHEAD_DISTANCE = 0.5
 # Set the waypoint coordinates input file
 REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path_ideal.txt"
 
-# Store the reference path made up of pose
-reference_path = PoseArray()
 
-# Store the car's current pose
-current_pose = Pose()
+# TO DO
+# 1. Store reference path as a numpy array, Done
+# 2. Calculate cross track error
+# 3. Calculate Heading Error
+# 4. Sum CTE and HE and pass them as the control value to the PID Controller
+# 5. Visualize Target Waypoint
 
-# Determine the lookahaed position
-# Calculate the ehading vector
-# Determine the closest point on the trajectory from car position
-# Calculate the trajectory vector
-# Calculate the Cross-Track Error
-# Use the Stanley Formulation to determine steering angle
-# Imporve the look-ahead distance based on the speed of the vehicle
-# Visualize reference path in Rviz
-# Visualize the lookahead position
-# Visualize waypoint markers
 
 def reference_path_loader():
     """
     Builds waypoints from pose from an input file and loads them into a reference path
     """
-
+    # Store raw coordinates locally in a list
+    raw_reference_path = []
     # Read in raw coordinate information from the reference path input file and load to a global reference array
     with open(REFERENCE_PATH_INPUT_FILE, 'r') as f:
         for line in f:
             # Process the raw coordinate(x,y) data
             line = line.strip()
             raw_coordinates = line.split(',')
+            raw_waypoint = [float(raw_coordinates[0]), float(raw_coordinates[1])]
+            # Append the raw coordinates to the raw reference path
+            raw_reference_path.append(raw_waypoint)
+    
+    # Assign our list into our global numpy array
+    reference_path = np.array(raw_reference_path)
 
-            # Convert the coordinates to pose
-            x = float(raw_coordinates[0])
-            y = float(raw_coordinates[1])
-            point = Point(x=x, y=y)
-            pose = Pose(position=point)
-            # Store pose in the reference path
-            reference_path.poses.append(pose)
+    return reference_path
 
-def current_pose_callback(data):
-    """
-    Update the global current car pose variable with the car's current pose.
-
-    :param data: The node that is subscribed to the car's current pose
-    """
-    # Store the car's current pose
-    current_pose = data.pose
-
-def car_pose_listener():
-    """
-    This node is a subscriber.
-    It listens for the car's curent pose.
-    """
-
-    # Initialize the node
-    rospy.init_node('car_position_listener')
-
-    # Declares our node subscribes to the car pose topic
-    # When a new message is received callback is invoked with message as the first argument
-    rospy.Subscriber('/car/car_pose', PoseStamped, current_pose_callback)
-
-    # spin() simply keeps python from exiting until this node is stopped. Should I replace spin() with some sort of frequency controlled subscribe?
-    rospy.spin()
-
-def nearest_waypoint():
+def nearest_waypoint(reference_path, current_pose):
     """
     Collect the car's current pose.
     Use it to calculate the nearest waypoint.
     Return the nearest waypoint.
     """
 
-    current_pose
+    # Convert the current pose into a numpy array
+    # current_pose_array = np.array([float(current_pose.position.x), float(current_pose.position.y)])
+    # current_pose_array = np.expand_dims(current_pose_array, axis=1).T
+
+
+    print(np.shape(current_pose))
+    print(np.shape(reference_path))
+
+    # Calculate an array of all of the distances between the current pose and the poses of the waypoints that make up the reference path
+    distance_array = np.linalg.norm(current_pose - reference_path, axis=1)
+
+    print('DIST ARRAY %s' % np.shape(distance_array))
+    # Calculate the minimim distance way point as an array
+    min_val_index = np.argmin(distance_array)
+    print('MIN INDEX %s' % min_val_index)
+    print('MIN VALUE %s' % distance_array[min_val_index])
+    # Unpack the x and y coordinates of the nearest waypoint
+    nearest_x_coordinate = reference_path[min_val_index][0]
+    nearest_y_coordinate = reference_path[min_val_index][1]
+
+    return np.array(nearest_x_coordinate, nearest_y_coordinate)
+
+def current_pose_callback(data, args):
+    """
+    Update the global current car pose variable with the car's current pose.
+
+    :param data: The node that is subscribed to the car's current pose
+    """
+
+    # Localize the publisher node
+    pub_controls = args[0]
+    
+    reference_path = args[1]
+    # Store the car's current pose
+    current_pose = np.array([data.pose.position.x, data.pose.position.y])
+
+    # Calculate the nearest waypoint
+    np_actual = nearest_waypoint(reference_path, current_pose)
+
+    # Calculate the L2 Norm, cross-track error
+    cross_track_error = np.linalg.norm(np_actual - current_pose)
+    print(cross_track_error)
+
 def send_init_pose(pub_init_pose, init_pose):
     """
     Publishes the initial pose of the car.
@@ -133,8 +143,9 @@ def lidar_callback(data, args):
     :param args: The node that publishes
     """
 
-    # Localize the publisher node
-    pub_controls = args
+    
+
+    
     # Calculate the distance from the car to the wall at its left
     left_dist = np.nanmean(np.array(data.ranges[LIDAR_LEFT-LIDAR_RANGE:LIDAR_LEFT+LIDAR_RANGE]))
     # Calculate the distance from the car to the wall on its right
@@ -142,14 +153,14 @@ def lidar_callback(data, args):
     # Calculate the control value
     control_value = - left_dist + right_dist
     # Log the control value
-    rospy.loginfo('Control Value: %s', control_value)
+    # rospy.loginfo('Control Value: %s', control_value)
 
     # If the control value is not a number set it to 0
     if np.isnan(control_value): control_value = 0
     # Caculate the steering angle using the PID
     steering_angle = pid(control_value)
     # Log the steering angle
-    rospy.loginfo('Steering Angle: %s', steering_angle)
+    # rospy.loginfo('Steering Angle: %s', steering_angle)
 
     # Create the drive message containing the corrective steering angle and speed
     drive = AckermannDrive(steering_angle=steering_angle, speed=1.0)
@@ -157,8 +168,15 @@ def lidar_callback(data, args):
     pub_controls.publish(AckermannDriveStamped(drive=drive))
 
 if __name__ == "__main__":
+    # Load the reference path
+    reference_path = reference_path_loader()
+
+
+
     # Initialize the baseline controller node
     rospy.init_node('baseline_pid')
+
+    
 
     # Collect the control topic to publish the steering instructions to
     control_topic = rospy.get_param("~control_topic", "/car/mux/ackermann_cmd_mux/input/navigation")
@@ -170,15 +188,17 @@ if __name__ == "__main__":
     # Publish the inital pose
     pub_init_pose = rospy.Publisher(init_pose_topic, PoseWithCovarianceStamped, queue_size=1)
 
-    # Begin the LIDAR scan and subsequently trigger the steering and drive controls
-    sub_lidar_scan = rospy.Subscriber("/car/scan", LaserScan, lidar_callback, (pub_controls))
-
-    # Set the control publish frequency
-    rospy.sleep(1.0)
-
     # initialize the car's initial pose
     init_pose = [0., 0., np.pi]
     send_init_pose(pub_init_pose, init_pose)
+
+    # Begin the LIDAR scan and subsequently trigger the steering and drive controls
+    # sub_lidar_scan = rospy.Subscriber("/car/scan", LaserScan, lidar_callback, (pub_controls, reference_path))
+
+    # Begin Pure Pursuit
+    rospy.Subscriber('/car/car_pose', PoseStamped, current_pose_callback, (pub_controls, reference_path))
+    # Set the control publish frequency
+    rospy.sleep(1.0)
     
     # use rospy.spin and let lidar callback handle the control
     rospy.spin()
