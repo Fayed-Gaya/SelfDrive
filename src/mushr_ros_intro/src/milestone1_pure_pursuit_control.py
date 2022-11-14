@@ -11,6 +11,8 @@ from sensor_msgs.msg import LaserScan
 # geometry_msgs provide message types for common geometric primitves
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import PoseWithCovariance
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Quaternion
@@ -19,17 +21,26 @@ from tf.transformations import quaternion_from_euler
 # Simple and easy to use PID Controller
 from simple_pid import PID
 
-
-# Define the left and rights of the AV in degrees
-LIDAR_LEFT = 450
-LIDAR_RIGHT = 270
-# Define the range of the LIDAR sensor
-LIDAR_RANGE = 30
-
 # Initalize PID controller and the corresponding multiples
 pid = PID(2.5, 0.2, 0.1, setpoint=0.0)
 
-# Create a function to read in the waypoints from the refence file
+# Define the left and right of the AV in degrees and the LIDAR range
+LIDAR_LEFT = 450
+LIDAR_RIGHT = 270
+LIDAR_RANGE = 30
+
+# Set the look ahead distance
+LOOK_AHEAD_DISTANCE = 0.5
+
+# Set the waypoint coordinates input file
+REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path_ideal.txt"
+
+# Store the reference path made up of pose
+reference_path = PoseArray()
+
+# Store the car's current pose
+current_pose = Pose()
+
 # Determine the lookahaed position
 # Calculate the ehading vector
 # Determine the closest point on the trajectory from car position
@@ -41,6 +52,59 @@ pid = PID(2.5, 0.2, 0.1, setpoint=0.0)
 # Visualize the lookahead position
 # Visualize waypoint markers
 
+def reference_path_loader():
+    """
+    Builds waypoints from pose from an input file and loads them into a reference path
+    """
+
+    # Read in raw coordinate information from the reference path input file and load to a global reference array
+    with open(REFERENCE_PATH_INPUT_FILE, 'r') as f:
+        for line in f:
+            # Process the raw coordinate(x,y) data
+            line = line.strip()
+            raw_coordinates = line.split(',')
+
+            # Convert the coordinates to pose
+            x = float(raw_coordinates[0])
+            y = float(raw_coordinates[1])
+            point = Point(x=x, y=y)
+            pose = Pose(position=point)
+            # Store pose in the reference path
+            reference_path.poses.append(pose)
+
+def current_pose_callback(data):
+    """
+    Update the global current car pose variable with the car's current pose.
+
+    :param data: The node that is subscribed to the car's current pose
+    """
+    # Store the car's current pose
+    current_pose = data.pose
+
+def car_pose_listener():
+    """
+    This node is a subscriber.
+    It listens for the car's curent pose.
+    """
+
+    # Initialize the node
+    rospy.init_node('car_position_listener')
+
+    # Declares our node subscribes to the car pose topic
+    # When a new message is received callback is invoked with message as the first argument
+    rospy.Subscriber('/car/car_pose', PoseStamped, current_pose_callback)
+
+    # spin() simply keeps python from exiting until this node is stopped. Should I replace spin() with some sort of frequency controlled subscribe?
+    rospy.spin()
+
+def nearest_waypoint():
+    """
+    Collect the car's current pose.
+    Use it to calculate the nearest waypoint.
+    Return the nearest waypoint.
+    """
+
+    current_pose
 def send_init_pose(pub_init_pose, init_pose):
     """
     Publishes the initial pose of the car.

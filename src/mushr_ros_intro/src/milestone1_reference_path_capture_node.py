@@ -44,7 +44,6 @@ def callback(data):
 
 # Defines how the node interfaces with the rest of ROS
 def reference_path_generator():
-
     # In ROS, nodes are uniquely named. If two nodes with the same
     # name are launched, the previous one is kicked off. The
     # anonymous=True flag means that rospy will choose a unique
@@ -52,7 +51,7 @@ def reference_path_generator():
     # run simultaneously.
     rospy.init_node('reference_path_generator', anonymous=True)
 
-    # Declares our node subscribes to the chatter topc which is of type String
+    # Declares our node subscribes to the car pose topc which is of type String
     # When a new message is received callback is invoked with message as the first argument
     rospy.Subscriber('/car/car_pose', PoseStamped, callback)
 

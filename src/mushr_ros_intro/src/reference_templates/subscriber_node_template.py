@@ -48,7 +48,7 @@ def callback(data):
     A callback functions pointer is passed to another component that calles the function.
     In most cases a callback is a message handler
 
-    :param data: ?
+    :param data: The node that calls the function.
     """
 
     # get_caller_id() returns the id of the caller
