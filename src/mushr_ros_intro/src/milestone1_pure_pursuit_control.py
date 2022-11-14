@@ -20,6 +20,8 @@ from geometry_msgs.msg import Quaternion
 from tf.transformations import quaternion_from_euler
 # Simple and easy to use PID Controller
 from simple_pid import PID
+# Rotation is a tool to allow us to get radians from quaternions
+from scipy.spatial.transform import Rotation as R
 
 # Initalize PID controller and the corresponding multiples
 pid = PID(2.5, 0.2, 0.1, setpoint=0.0)
@@ -34,14 +36,6 @@ LOOK_AHEAD_DISTANCE = 0.5
 
 # Set the waypoint coordinates input file
 REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path_ideal.txt"
-
-
-# TO DO
-# 1. Store reference path as a numpy array, Done
-# 2. Calculate cross track error
-# 3. Calculate Heading Error
-# 4. Sum CTE and HE and pass them as the control value to the PID Controller
-# 5. Visualize Target Waypoint
 
 
 def reference_path_loader():
@@ -65,11 +59,9 @@ def reference_path_loader():
 
     return reference_path
 
-def nearest_waypoint(reference_path, current_pose):
+def nearest_waypoint_current_pose(reference_path, current_pose):
     """
-    Collect the car's current pose.
-    Use it to calculate the nearest waypoint.
-    Return the nearest waypoint.
+    Calculate the nearest waypoint to the current pose of the car along the reference path.
     """
 
     # Convert the current pose into a numpy array
@@ -94,26 +86,56 @@ def nearest_waypoint(reference_path, current_pose):
 
     return np.array(nearest_x_coordinate, nearest_y_coordinate)
 
+def look_ahead_pt_calculator(current_pose_orientation, current_pos, l_d):
+    """
+    Calculate the lookahead point.
+    """
+    x = current_pose_orientation.x
+    y = current_pose_orientation.y
+    z = current_pose_orientation.z
+    w = current_pose_orientation.w
+
+    r = R.from_quat([x, y, z, w])
+    yaw = r.as_euler('zyx', degrees=False)[0]
+
+    look_ahead_x = current_pos[0] + l_d * np.cos(yaw)
+    look_ahead_y = current_pos[1] + l_d * np.cos(yaw)
+
+    look_ahead_pt = np.array([look_ahead_x, look_ahead_y])
+
+    return look_ahead_pt
+
 def current_pose_callback(data, args):
     """
-    Update the global current car pose variable with the car's current pose.
+    Calculate the current position of the car.
+    Calculate the cross-track error.
+    Calculate the heading error.
 
-    :param data: The node that is subscribed to the car's current pose
+    : param data: Node
+    : param args: Tuple containing publisher controls and the reference path.
     """
 
-    # Localize the publisher node
+    # Unpack the node API
     pub_controls = args[0]
-    
+    # Unpack the reference path
     reference_path = args[1]
+
     # Store the car's current pose
     current_pose = np.array([data.pose.position.x, data.pose.position.y])
 
-    # Calculate the nearest waypoint
-    np_actual = nearest_waypoint(reference_path, current_pose)
+    # Calculate the nearest waypoint tp the current position
+    np_actual = nearest_waypoint_current_pose(reference_path, current_pose)
+
+    # Calculate the lookahead point
+    look_ahead_pt = look_ahead_pt_calculator(data.pose.orientation, current_pose, LOOK_AHEAD_DISTANCE)
+
+    print(look_ahead_pt)
+
+    # Calculate the nearest waypoint to the the 
 
     # Calculate the L2 Norm, cross-track error
     cross_track_error = np.linalg.norm(np_actual - current_pose)
-    print(cross_track_error)
+    
 
 def send_init_pose(pub_init_pose, init_pose):
     """
