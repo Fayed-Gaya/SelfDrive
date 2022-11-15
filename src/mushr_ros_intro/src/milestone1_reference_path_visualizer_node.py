@@ -18,7 +18,7 @@ import rospy
 # numpy supports arrays and a collection of relevant high-level mathematical functions
 import numpy as np
 
-REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path_ideal.txt"
+REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path.txt"
 # Create the globally accessible marker array
 reference_path = MarkerArray()
 

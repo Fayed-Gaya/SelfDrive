@@ -32,10 +32,10 @@ LIDAR_RIGHT = 270
 LIDAR_RANGE = 30
 
 # Set the look ahead distance
-LOOK_AHEAD_DISTANCE = 0.2
+LOOK_AHEAD_DISTANCE = 0.3
 
 # Set the waypoint coordinates input file
-REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path_ideal.txt"
+REFERENCE_PATH_INPUT_FILE = "/home/hanwen/catkin_ws/src/mushr_ros_intro/src/reference_path.txt"
 
 
 def reference_path_loader():
@@ -172,7 +172,7 @@ def current_pose_callback(data, args):
 
     # Caculate the steering angle using the PID
     # steering_angle = pid(control_value + cross_track_error)
-    VEL = 2.0
+    VEL = 1.25
     # Pure Pursuit
     L = 0.5
     pursit_steering_angle = -np.arctan(2*L*np.sin(heading_error)/(LOOK_AHEAD_DISTANCE))
@@ -183,6 +183,7 @@ def current_pose_callback(data, args):
     if heading_error < 0: cross_track_error = -cross_track_error
     stanely_steering_angle = np.arctan(K*cross_track_error/(VEL+1e-6)) + (100 * - heading_error)
     print('Stanely %s' % stanely_steering_angle)
+    print('Current Position %s' % current_pose)
     
 
     # Create the drive message containing the corrective steering angle and speed
