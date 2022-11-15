@@ -181,7 +181,7 @@ def current_pose_callback(data, args):
     # Stanely
     K = 1.0
     if heading_error < 0: cross_track_error = -cross_track_error
-    stanely_steering_angle = np.arctan(K*cross_track_error/(VEL+1e-6)) + (100 * - heading_error)
+    stanely_steering_angle = np.arctan(K*cross_track_error/(VEL+1e-6)) + (10 * - heading_error)
     print('Stanely %s' % stanely_steering_angle)
     print('Current Position %s' % current_pose)
     

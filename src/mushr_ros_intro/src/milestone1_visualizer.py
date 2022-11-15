@@ -13,7 +13,7 @@ from scipy.spatial.transform import Rotation as R
 
 import numpy as np
 
-LOOK_AHEAD_DISTANCE = 1
+LOOK_AHEAD_DISTANCE = 0.3
 
 
 # We usually pass a function pointer to the call back function

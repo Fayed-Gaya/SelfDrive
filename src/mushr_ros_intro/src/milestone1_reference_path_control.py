@@ -15,8 +15,8 @@ from tf.transformations import quaternion_from_euler
 from simple_pid import PID
 
 # Base values: Left - 450, Right - 270
-LIDAR_LEFT = 425
-LIDAR_RIGHT = 297
+LIDAR_LEFT = 420
+LIDAR_RIGHT = 300
 LIDAR_RANGE = 30
 
 pid = PID(2.5, 0.2, 0.1, setpoint=0.0)
